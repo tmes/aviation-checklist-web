@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+frontend/dist/
+frontend/build/
+
+# Logs
+*.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# PHP
+composer.lock
+
+# Database
+*.sqlite
+*.db
+
+# Temporary files
+*.tmp
+*.cache
+*.bak
+*~
