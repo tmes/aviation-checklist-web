@@ -1,14 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Mail } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { getLanguages } from '../lib/api/translations';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+
+type Language = {
+  languageCode: string;
+  languageName: string;
+  nativeName: string;
+};
 
 export default function Register() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { register, isLoading, error, clearError } = useAuthStore();
 
   const [formData, setFormData] = useState({
@@ -17,13 +24,28 @@ export default function Register() {
     confirmPassword: '',
     firstName: '',
     lastName: '',
+    languagePreference: i18n.language || 'en',
   });
 
+  const [languages, setLanguages] = useState<Language[]>([]);
   const [validationError, setValidationError] = useState('');
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    loadLanguages();
+  }, []);
+
+  const loadLanguages = async () => {
+    try {
+      const data = await getLanguages();
+      setLanguages(data);
+    } catch (err) {
+      console.error('Failed to load languages:', err);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -60,6 +82,7 @@ export default function Register() {
           password: formData.password,
           firstName: formData.firstName,
           lastName: formData.lastName,
+          languagePreference: formData.languagePreference,
         }),
       });
 
@@ -240,6 +263,26 @@ export default function Register() {
                 onChange={handleChange}
                 disabled={isLoading}
               />
+            </div>
+
+            <div>
+              <label htmlFor="languagePreference" className="sr-only">
+                {t('settings.language')}
+              </label>
+              <select
+                id="languagePreference"
+                name="languagePreference"
+                value={formData.languagePreference}
+                onChange={handleChange}
+                disabled={isLoading}
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              >
+                {languages.map((lang) => (
+                  <option key={lang.languageCode} value={lang.languageCode}>
+                    {lang.nativeName}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

@@ -11,6 +11,8 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  languagePreference?: string;
+  darkMode?: boolean;
   emailVerified: boolean;
   isSuperAdmin: boolean;
   avatarUrl?: string;
@@ -35,6 +37,7 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
+  languagePreference?: string;
 }
 
 // ----------------------------------------------------------------------------
@@ -42,40 +45,65 @@ export interface RegisterData {
 // ----------------------------------------------------------------------------
 
 export type AircraftCategory =
-  | "SEP"
-  | "MEP"
-  | "JET"
-  | "UL"
-  | "HELI"
-  | "GLIDER"
-  | "OTHER";
-
-export interface AircraftType {
-  id: string;
-  name: string;
-  manufacturer: string;
-  category: AircraftCategory;
-  description?: string;
-  isCustom: boolean;
-}
-
-export type OwnerType = "user" | "organization";
-export type AircraftStatus = "airworthy" | "maintenance" | "grounded";
+  | "single_engine"
+  | "multi_engine"
+  | "helicopter"
+  | "glider"
+  | "ultralight";
 
 export interface Aircraft {
   id: string;
-  aircraftTypeId: string;
-  ownerType: OwnerType;
-  ownerUserId?: string;
-  ownerOrgId?: string;
+  organizationId?: string | null;
+  ownerUserId?: string | null;
+  organizationName?: string;
+  registration: string;
+  type: string;
+  manufacturer?: string;
+  model?: string;
+  category: AircraftCategory;
+  yearManufactured?: number;
+  serialNumber?: string;
+  maxWeightKg?: number;
+  fuelCapacityLiters?: number;
+  isActive: boolean;
+  isAvailable: boolean;
+  notes?: string;
+  photoUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAircraftData {
+  organizationId?: string; // Optional - if not provided, creates personal aircraft
+  registration: string;
+  type: string;
+  manufacturer?: string;
+  model?: string;
+  category?: AircraftCategory;
+  yearManufactured?: number;
+  serialNumber?: string;
+  maxWeightKg?: number;
+  fuelCapacityLiters?: number;
+  isActive?: boolean;
+  isAvailable?: boolean;
+  notes?: string;
+  photoUrl?: string;
+}
+
+export interface UpdateAircraftData {
   registration?: string;
-  callsign: string;
-  hobbsTime?: number;
-  tachTime?: number;
-  status: AircraftStatus;
-  createdAt: Date;
-  updatedAt: Date;
-  aircraftType?: AircraftType;
+  type?: string;
+  manufacturer?: string;
+  model?: string;
+  category?: AircraftCategory;
+  yearManufactured?: number;
+  serialNumber?: string;
+  maxWeightKg?: number;
+  fuelCapacityLiters?: number;
+  isActive?: boolean;
+  isAvailable?: boolean;
+  notes?: string;
+  photoUrl?: string;
 }
 
 // ----------------------------------------------------------------------------

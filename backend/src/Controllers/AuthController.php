@@ -62,9 +62,9 @@ class AuthController
             $expiresAt = date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"));
 
             $stmt = $this->db->prepare("
-				INSERT INTO users (id, email, password_hash, first_name, last_name,
+				INSERT INTO users (id, email, password_hash, first_name, last_name, language_preference, dark_mode,
 				                  email_verified, email_verification_token, email_verification_expires)
-				VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+				VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
 			");
 
             $stmt->execute([
@@ -73,6 +73,8 @@ class AuthController
                 $passwordHash,
                 $input["firstName"] ?? "",
                 $input["lastName"] ?? "",
+                $input["languagePreference"] ?? "en",
+                $input["darkMode"] ?? false,
                 $verificationToken,
                 $expiresAt,
             ]);
@@ -118,7 +120,7 @@ class AuthController
 
         // Find user
         $stmt = $this->db->prepare("
-			SELECT id, email, password_hash, first_name, last_name, email_verified, is_super_admin
+			SELECT id, email, password_hash, first_name, last_name, language_preference, dark_mode, email_verified, is_super_admin
 			FROM users
 			WHERE email = ?
 		");
@@ -148,13 +150,13 @@ class AuthController
             "email" => $user["email"],
         ]);
 
-        // Return user data (without password)
-        unset($user["password_hash"]);
+        // Transform user data to camelCase
+        $transformedUser = $this->transformUser($user);
 
         $response = [
             "message" => "Login successful",
             "token" => $token,
-            "user" => $user,
+            "user" => $transformedUser,
         ];
 
         // Soft warning for unverified email (Optie B - lenient approach)
@@ -179,7 +181,7 @@ class AuthController
             return;
         }
 
-        JsonHelper::send(["data" => $user]);
+        JsonHelper::send(["data" => $this->transformUser($user)]);
     }
 
     /**
@@ -316,13 +318,142 @@ class AuthController
     private function getUserById(string $userId): ?array
     {
         $stmt = $this->db->prepare("
-			SELECT id, email, first_name, last_name, email_verified, is_super_admin,
+			SELECT id, email, first_name, last_name, language_preference, dark_mode, email_verified, is_super_admin,
 				   created_at, updated_at, last_login_at
 			FROM users
 			WHERE id = ?
 		");
         $stmt->execute([$userId]);
         return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Update user profile
+     * PUT /api/users/profile
+     */
+    public function updateProfile(string $userId): void
+    {
+        $input = json_decode(file_get_contents("php://input"), true);
+
+        // Validate at least one field is being updated
+        if (empty($input["firstName"]) && empty($input["lastName"]) && empty($input["languagePreference"]) && !isset($input["darkMode"])) {
+            JsonHelper::error("At least one field is required", 400);
+            return;
+        }
+
+        // Build dynamic UPDATE query
+        $fields = [];
+        $params = [];
+
+        if (!empty($input["firstName"])) {
+            $fields[] = "first_name = ?";
+            $params[] = $input["firstName"];
+        }
+
+        if (!empty($input["lastName"])) {
+            $fields[] = "last_name = ?";
+            $params[] = $input["lastName"];
+        }
+
+        if (!empty($input["languagePreference"])) {
+            // Validate language code exists
+            $stmt = $this->db->prepare("SELECT language_code FROM supported_languages WHERE language_code = ? AND is_active = 1");
+            $stmt->execute([$input["languagePreference"]]);
+            if (!$stmt->fetch()) {
+                JsonHelper::error("Invalid language code", 400);
+                return;
+            }
+
+            $fields[] = "language_preference = ?";
+            $params[] = $input["languagePreference"];
+        }
+
+        if (isset($input["darkMode"])) {
+            $fields[] = "dark_mode = ?";
+            $params[] = $input["darkMode"] ? 1 : 0;
+        }
+
+        $params[] = $userId;
+
+        try {
+            $sql = "UPDATE users SET " . implode(", ", $fields) . " WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            // Get updated user data
+            $user = $this->getUserById($userId);
+
+            JsonHelper::success("Profile updated successfully", $this->transformUser($user));
+        } catch (PDOException $e) {
+            JsonHelper::error("Failed to update profile: " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Change user password
+     * PUT /api/users/password
+     */
+    public function changePassword(string $userId): void
+    {
+        $input = json_decode(file_get_contents("php://input"), true);
+
+        // Validation
+        if (empty($input["currentPassword"]) || empty($input["newPassword"])) {
+            JsonHelper::error("Current password and new password are required", 400);
+            return;
+        }
+
+        if (strlen($input["newPassword"]) < 6) {
+            JsonHelper::error("New password must be at least 6 characters", 400);
+            return;
+        }
+
+        // Get current user
+        $stmt = $this->db->prepare("SELECT password_hash FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            JsonHelper::error("User not found", 404);
+            return;
+        }
+
+        // Verify current password
+        if (!password_verify($input["currentPassword"], $user["password_hash"])) {
+            JsonHelper::error("Current password is incorrect", 401);
+            return;
+        }
+
+        // Update password
+        try {
+            $newPasswordHash = password_hash($input["newPassword"], PASSWORD_BCRYPT);
+            $stmt = $this->db->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+            $stmt->execute([$newPasswordHash, $userId]);
+
+            JsonHelper::success("Password changed successfully");
+        } catch (PDOException $e) {
+            JsonHelper::error("Failed to change password: " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Helper: Transform user data from snake_case to camelCase
+     */
+    private function transformUser(array $user): array
+    {
+        return [
+            'id' => $user['id'],
+            'email' => $user['email'],
+            'firstName' => $user['first_name'] ?? '',
+            'lastName' => $user['last_name'] ?? '',
+            'languagePreference' => $user['language_preference'] ?? 'en',
+            'darkMode' => (bool)($user['dark_mode'] ?? false),
+            'emailVerified' => (bool)($user['email_verified'] ?? false),
+            'isSuperAdmin' => (bool)($user['is_super_admin'] ?? false),
+            'createdAt' => $user['created_at'] ?? null,
+            'updatedAt' => $user['updated_at'] ?? null,
+            'lastLoginAt' => $user['last_login_at'] ?? null,
+        ];
     }
 
     /**

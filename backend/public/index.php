@@ -26,6 +26,7 @@ $dotenv->load();
 
 // Import controllers and middleware
 use App\Controllers\AuthController;
+use App\Controllers\AircraftController;
 use App\Controllers\TranslationController;
 use App\Helpers\JsonHelper;
 use App\Middleware\AuthMiddleware;
@@ -83,6 +84,59 @@ try {
         $userId = AuthMiddleware::authenticate();
         $controller = new AuthController();
         $controller->me($userId);
+        exit();
+    }
+
+    if ($uri === "/api/users/profile" && $method === "PUT") {
+        $userId = AuthMiddleware::authenticate();
+        $controller = new AuthController();
+        $controller->updateProfile($userId);
+        exit();
+    }
+
+    if ($uri === "/api/users/password" && $method === "PUT") {
+        $userId = AuthMiddleware::authenticate();
+        $controller = new AuthController();
+        $controller->changePassword($userId);
+        exit();
+    }
+
+    // Aircraft routes (protected)
+    if ($uri === "/api/aircraft" && $method === "GET") {
+        $userId = AuthMiddleware::authenticate();
+        $controller = new AircraftController();
+        $controller->list($userId);
+        exit();
+    }
+
+    if ($uri === "/api/aircraft" && $method === "POST") {
+        $userId = AuthMiddleware::authenticate();
+        $controller = new AircraftController();
+        $controller->create($userId);
+        exit();
+    }
+
+    if (preg_match('#^/api/aircraft/([a-f0-9-]{36})$#', $uri, $matches) && $method === "GET") {
+        $userId = AuthMiddleware::authenticate();
+        $aircraftId = $matches[1];
+        $controller = new AircraftController();
+        $controller->get($userId, $aircraftId);
+        exit();
+    }
+
+    if (preg_match('#^/api/aircraft/([a-f0-9-]{36})$#', $uri, $matches) && $method === "PUT") {
+        $userId = AuthMiddleware::authenticate();
+        $aircraftId = $matches[1];
+        $controller = new AircraftController();
+        $controller->update($userId, $aircraftId);
+        exit();
+    }
+
+    if (preg_match('#^/api/aircraft/([a-f0-9-]{36})$#', $uri, $matches) && $method === "DELETE") {
+        $userId = AuthMiddleware::authenticate();
+        $aircraftId = $matches[1];
+        $controller = new AircraftController();
+        $controller->delete($userId, $aircraftId);
         exit();
     }
 

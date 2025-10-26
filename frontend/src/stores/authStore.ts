@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, LoginCredentials, RegisterData } from '../types';
 import * as authApi from '../lib/api/auth';
+import i18n from '../lib/i18n';
 
 interface AuthState {
   user: User | null;
@@ -18,8 +19,16 @@ interface AuthState {
   logout: () => void;
   loadUser: () => Promise<void>;
   setAuth: (user: User, token: string) => void;
+  setUser: (user: User) => void;
   clearError: () => void;
 }
+
+// Helper function to sync language with i18n
+const syncLanguage = (user: User | null) => {
+  if (user?.languagePreference && i18n.language !== user.languagePreference) {
+    i18n.changeLanguage(user.languagePreference);
+  }
+};
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -34,6 +43,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await authApi.login(credentials);
+          syncLanguage(response.user);
           set({
             user: response.user,
             token: response.token,
@@ -100,6 +110,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const user = await authApi.getCurrentUser(token);
+          syncLanguage(user);
           set({
             user,
             isAuthenticated: true,
@@ -119,6 +130,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setAuth: (user, token) => {
+        syncLanguage(user);
         set({
           user,
           token,
@@ -126,6 +138,11 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false,
           error: null,
         });
+      },
+
+      setUser: (user) => {
+        syncLanguage(user);
+        set({ user });
       },
 
       clearError: () => set({ error: null }),
