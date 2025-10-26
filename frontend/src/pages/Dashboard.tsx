@@ -48,12 +48,12 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navigation />
 
       {/* Email Verification Banner */}
       {user && !user.emailVerified && showVerificationBanner && (
-        <div className="bg-yellow-50 border-b border-yellow-200">
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div className="flex items-center justify-between flex-wrap">
               <div className="flex items-center flex-1">
@@ -104,18 +104,18 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="border-4 border-dashed border-gray-200 rounded-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <div className="border-4 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               {t('auth.welcome')}
             </h2>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               {t('auth.loggedInAs')} {user?.email}
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-              <h3 className="text-sm font-medium text-blue-900 mb-2">
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+              <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
                 {t('common.userInformation')}
               </h3>
-              <dl className="text-sm text-blue-700 space-y-1">
+              <dl className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
                 <div>
                   <dt className="inline font-semibold">{t('common.id')}:</dt>
                   <dd className="inline ml-2">{user?.id}</dd>
