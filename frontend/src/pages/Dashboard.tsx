@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Mail, X, Loader2 } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function Dashboard() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [showVerificationBanner, setShowVerificationBanner] = useState(true);
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
@@ -33,12 +36,12 @@ export default function Dashboard() {
       const data = await response.json();
 
       if (response.ok) {
-        setResendMessage('Verification email sent! Check your inbox.');
+        setResendMessage(t('auth.verificationSent'));
       } else {
-        setResendMessage(data.error || 'Failed to resend email');
+        setResendMessage(data.error || t('auth.resendFailed'));
       }
     } catch (error) {
-      setResendMessage('Failed to resend email. Please try again.');
+      setResendMessage(t('auth.resendError'));
     } finally {
       setResending(false);
     }
@@ -53,6 +56,7 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold text-gray-900">Aerocheck</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <LanguageSwitcher />
               <span className="text-sm text-gray-700">
                 {user?.firstName} {user?.lastName}
               </span>
@@ -60,7 +64,7 @@ export default function Dashboard() {
                 onClick={handleLogout}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Logout
+                {t('common.logout')}
               </button>
             </div>
           </div>
@@ -76,10 +80,10 @@ export default function Dashboard() {
                 <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-yellow-800">
-                    Email not verified
+                    {t('auth.emailNotVerified')}
                   </p>
                   <p className="text-xs text-yellow-700 mt-1">
-                    Please verify your email address to access all features.
+                    {t('auth.verifyEmailPrompt')}
                   </p>
                   {resendMessage && (
                     <p className="text-xs mt-1 text-green-700 font-medium">
@@ -97,12 +101,12 @@ export default function Dashboard() {
                   {resending ? (
                     <>
                       <Loader2 className="animate-spin h-3 w-3 mr-1" />
-                      Sending...
+                      {t('common.sending')}
                     </>
                   ) : (
                     <>
                       <Mail className="h-3 w-3 mr-1" />
-                      Resend Email
+                      {t('auth.resendVerification')}
                     </>
                   )}
                 </button>
@@ -122,34 +126,34 @@ export default function Dashboard() {
         <div className="px-4 py-6 sm:px-0">
           <div className="border-4 border-dashed border-gray-200 rounded-lg p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Welcome to Aerocheck! ✈️
+              {t('auth.welcome')}
             </h2>
             <p className="text-gray-600 mb-4">
-              You're logged in as {user?.email}
+              {t('auth.loggedInAs')} {user?.email}
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
               <h3 className="text-sm font-medium text-blue-900 mb-2">
-                User Information
+                {t('common.userInformation')}
               </h3>
               <dl className="text-sm text-blue-700 space-y-1">
                 <div>
-                  <dt className="inline font-semibold">ID:</dt>
+                  <dt className="inline font-semibold">{t('common.id')}:</dt>
                   <dd className="inline ml-2">{user?.id}</dd>
                 </div>
                 <div>
-                  <dt className="inline font-semibold">Email:</dt>
+                  <dt className="inline font-semibold">{t('common.email')}:</dt>
                   <dd className="inline ml-2">{user?.email}</dd>
                 </div>
                 <div>
-                  <dt className="inline font-semibold">Name:</dt>
+                  <dt className="inline font-semibold">{t('common.name')}:</dt>
                   <dd className="inline ml-2">
                     {user?.firstName} {user?.lastName}
                   </dd>
                 </div>
                 <div>
-                  <dt className="inline font-semibold">Email Status:</dt>
+                  <dt className="inline font-semibold">{t('common.emailStatus')}:</dt>
                   <dd className="inline ml-2">
-                    {user?.emailVerified ? '✓ Verified' : '⚠ Not Verified'}
+                    {user?.emailVerified ? t('auth.verified') : t('auth.notVerified')}
                   </dd>
                 </div>
               </dl>

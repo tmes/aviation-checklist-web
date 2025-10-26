@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Mail } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { register, isLoading, error, clearError } = useAuthStore();
 
   const [formData, setFormData] = useState({
@@ -36,12 +39,12 @@ export default function Register() {
 
     // Client-side validation
     if (formData.password !== formData.confirmPassword) {
-      setValidationError('Passwords do not match');
+      setValidationError(t('auth.passwordsDoNotMatch'));
       return;
     }
 
     if (formData.password.length < 6) {
-      setValidationError('Password must be at least 6 characters');
+      setValidationError(t('auth.passwordMinLength'));
       return;
     }
 
@@ -81,7 +84,7 @@ export default function Register() {
         setValidationError(data.error || 'Registration failed');
       }
     } catch (err) {
-      setValidationError('Failed to connect to server. Please try again.');
+      setValidationError(t('errors.connectionFailed'));
     }
   };
 
@@ -98,24 +101,24 @@ export default function Register() {
                 <Mail className="h-12 w-12 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Check your email
+                {t('auth.checkYourEmail')}
               </h2>
               <p className="text-gray-600 mb-6">
-                We've sent a verification email to{' '}
+                {t('auth.verificationEmailSent')}{' '}
                 <span className="font-medium text-gray-900">{registeredEmail}</span>
               </p>
               <p className="text-sm text-gray-500 mb-6">
-                Click the link in the email to verify your account. The link will expire in 24 hours.
+                {t('auth.verificationInstructions')}
               </p>
               <div className="w-full space-y-3">
                 <Link
                   to="/login"
                   className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  Go to Login
+                  {t('auth.goToLogin')}
                 </Link>
                 <p className="text-xs text-gray-500">
-                  Didn't receive the email? Check your spam folder.
+                  {t('auth.checkSpam')}
                 </p>
               </div>
             </div>
@@ -128,12 +131,17 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
+        {/* Language Switcher */}
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
+
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Aerocheck
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Create your account
+            {t('auth.createAccount')}
           </p>
         </div>
 
@@ -148,7 +156,7 @@ export default function Register() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstName" className="sr-only">
-                  First name
+                  {t('auth.firstName')}
                 </label>
                 <input
                   id="firstName"
@@ -156,7 +164,7 @@ export default function Register() {
                   type="text"
                   required
                   className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="First name"
+                  placeholder={t('auth.firstName')}
                   value={formData.firstName}
                   onChange={handleChange}
                   disabled={isLoading}
@@ -164,7 +172,7 @@ export default function Register() {
               </div>
               <div>
                 <label htmlFor="lastName" className="sr-only">
-                  Last name
+                  {t('auth.lastName')}
                 </label>
                 <input
                   id="lastName"
@@ -172,7 +180,7 @@ export default function Register() {
                   type="text"
                   required
                   className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Last name"
+                  placeholder={t('auth.lastName')}
                   value={formData.lastName}
                   onChange={handleChange}
                   disabled={isLoading}
@@ -182,7 +190,7 @@ export default function Register() {
 
             <div>
               <label htmlFor="email" className="sr-only">
-                Email address
+                {t('auth.emailAddress')}
               </label>
               <input
                 id="email"
@@ -191,7 +199,7 @@ export default function Register() {
                 autoComplete="email"
                 required
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
+                placeholder={t('auth.emailAddress')}
                 value={formData.email}
                 onChange={handleChange}
                 disabled={isLoading}
@@ -200,7 +208,7 @@ export default function Register() {
 
             <div>
               <label htmlFor="password" className="sr-only">
-                Password
+                {t('auth.password')}
               </label>
               <input
                 id="password"
@@ -209,7 +217,7 @@ export default function Register() {
                 autoComplete="new-password"
                 required
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password (min 6 characters)"
+                placeholder={t('auth.passwordMinChars')}
                 value={formData.password}
                 onChange={handleChange}
                 disabled={isLoading}
@@ -218,7 +226,7 @@ export default function Register() {
 
             <div>
               <label htmlFor="confirmPassword" className="sr-only">
-                Confirm password
+                {t('auth.confirmPassword')}
               </label>
               <input
                 id="confirmPassword"
@@ -227,7 +235,7 @@ export default function Register() {
                 autoComplete="new-password"
                 required
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Confirm password"
+                placeholder={t('auth.confirmPassword')}
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 disabled={isLoading}
@@ -241,7 +249,7 @@ export default function Register() {
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating account...' : 'Sign up'}
+              {isLoading ? t('auth.creatingAccount') : t('auth.signUp')}
             </button>
           </div>
 
@@ -250,7 +258,7 @@ export default function Register() {
               to="/login"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
-              Already have an account? Sign in
+              {t('auth.haveAccount')}
             </Link>
           </div>
         </form>
