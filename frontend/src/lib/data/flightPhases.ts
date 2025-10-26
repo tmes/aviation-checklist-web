@@ -1,4 +1,4 @@
-import { FlightPhase } from "../../types";
+import type { FlightPhase } from "../../types";
 
 export const FLIGHT_PHASES: readonly FlightPhase[] = [
   {

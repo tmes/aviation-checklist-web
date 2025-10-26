@@ -1,88 +1,78 @@
 # Aerocheck - Aviation Checklist Management
 
-Progressive Web App for aviation checklist management with multi-tenant support.
+Multi-tenant Progressive Web App for aviation checklist management.
 
-## 🚀 Tech Stack
+## Quick Start
 
-- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS
-- **Backend:** PHP 8.2 + Slim Framework
-- **Database:** MySQL 8.0 (MAMP Pro)
+### Development
 
-## 📁 Project Structure
-
-aerocheck/ ├── frontend/ # React PWA ├── backend/ # PHP REST API └── README.md
-
-## 🛠️ Development Setup
-
-### Frontend
-
-````bash
+**Frontend:**
+```bash
 cd frontend
 npm install
 npm run dev
 # → http://localhost:5173
-Backend
+```
+
+**Backend:**
+```bash
 cd backend
 composer install
 cp .env.example .env
 # Edit .env with database credentials
 php -S localhost:8000 -t public
 # → http://localhost:8000
-Database
-CREATE DATABASE aerocheck;
--- Run schema from backend/database/schema.sql
-🎯 Features
-Phase 1 (Current)
-✅ Project setup
-✅ Database schema
-✅ TypeScript types
-✅ Aircraft types & flight phases data
-🔄 Authentication (in progress)
-🔄 Aircraft management
-🔄 Checklist CRUD
-Phase 2 (Planned)
-Multi-tenant organizations
-Checklist distribution
-Skip tracking & analytics
-Compliance reporting
-📄 License
-MIT
+```
 
+**Database:**
+```sql
+CREATE DATABASE aerocheck;
+-- Import schema: backend/database/schema.sql
+```
 
 ---
 
-## 📋 **Stage Files**
+## Documentation
 
+**Complete documentation is in:**
+- **ARCHITECTURE.md** - Complete system architecture, database schema, API endpoints
+- **SECURITY.md** - Security implementation and best practices
+- **DESIGN_SYSTEM.md** - Icon system and UI guidelines
+- **ARCHITECTURE_SUMMARY.md** - Quick overview of changes and setup
+- **CLAUDE.md** - Development guidance for Claude Code
+
+---
+
+## Tech Stack
+
+- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS + Lucide Icons
+- **Backend:** PHP 8.2 + Slim Framework + MySQL 8.0
+- **Auth:** JWT (firebase/php-jwt)
+- **Hosting:** Shared Webhosting (cPanel compatible)
+
+---
+
+## Deployment
+
+Both frontend and backend run on the same shared hosting account.
+
+**Build & Upload:**
 ```bash
-cd /Users/tommesselis/Sites/aerocheck
+# Frontend
+cd frontend
+npm run build
+# Upload dist/ contents to public_html/
 
-# Check wat er is
-git status
+# Backend
+cd backend
+composer install --no-dev --optimize-autoloader
+# Upload to public_html/api/
+```
 
-# Add alles BEHALVE .env (die staat al in .gitignore)
-git add .
+See **ARCHITECTURE.md** → Deployment Strategy for full details.
 
-# Check wat staged is
-git status
-💾 Commit
-git commit -m "Initial setup: Aerocheck Aviation Checklist
+---
 
-✨ Features:
-- Frontend: React 19 + TypeScript + Vite + Tailwind CSS
-- Backend: PHP 8.2 + Slim framework structure
-- Database: MySQL schema with aircraft types seeded
-- Types: Complete TypeScript definitions
-- Data: Aircraft types (8) and flight phases (14+2)
-- CORS: Frontend ↔ Backend communication configured
+## License
 
-🎯 Status:
-- Frontend running on localhost:5173
-- Backend running on localhost:8000
-- Database 'aerocheck' with 8 tables
-- Health check endpoint functional
-
-📝 Next:
-- Authentication system (JWT)
-- Aircraft CRUD endpoints
-- Checklist management"
-````
+MIT

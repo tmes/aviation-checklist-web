@@ -1,4 +1,4 @@
-import { AircraftType } from "../../types";
+import type { AircraftType } from "../../types";
 
 export const DEFAULT_AIRCRAFT_TYPES: AircraftType[] = [
   {

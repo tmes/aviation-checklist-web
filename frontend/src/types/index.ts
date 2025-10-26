@@ -11,11 +11,12 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  emailVerified: boolean;
+  isSuperAdmin: boolean;
   avatarUrl?: string;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;
-  isActive: boolean;
 }
 
 export interface AuthTokens {
