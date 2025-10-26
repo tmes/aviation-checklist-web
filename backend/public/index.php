@@ -27,6 +27,7 @@ $dotenv->load();
 // Import controllers and middleware
 use App\Controllers\AuthController;
 use App\Controllers\TranslationController;
+use App\Helpers\JsonHelper;
 use App\Middleware\AuthMiddleware;
 
 // Parse request
@@ -42,7 +43,7 @@ try {
         $stmt = $pdo->query("SELECT COUNT(*) as count FROM aircraft_types");
         $result = $stmt->fetch();
 
-        echo json_encode([
+        JsonHelper::send([
             "status" => "ok",
             "message" => "Aerocheck API is running",
             "database" => "connected",
@@ -131,7 +132,7 @@ try {
 
     // Root endpoint
     if ($uri === "" || $uri === "/" || $uri === "/api") {
-        echo json_encode([
+        JsonHelper::send([
             "name" => "Aerocheck API",
             "version" => "1.0.0",
             "status" => "running",
@@ -148,16 +149,10 @@ try {
     }
 
     // 404 - Route not found
-    http_response_code(404);
-    echo json_encode([
-        "error" => "Endpoint not found",
+    JsonHelper::error("Endpoint not found", 404, [
         "path" => $uri,
         "method" => $method,
     ]);
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        "error" => "Server error",
-        "message" => $e->getMessage(),
-    ]);
+    JsonHelper::error("Server error: " . $e->getMessage(), 500);
 }

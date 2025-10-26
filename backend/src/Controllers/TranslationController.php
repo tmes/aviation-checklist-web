@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Database\Connection;
+use App\Helpers\JsonHelper;
 use App\Services\PermissionService;
 use PDO;
 
@@ -28,8 +29,7 @@ class TranslationController
         $stmt->execute([$languageCode]);
 
         if (!$stmt->fetch()) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Language not supported']);
+            JsonHelper::error('Language not supported', 404);
             return;
         }
 
@@ -65,6 +65,9 @@ class TranslationController
         // Set cache headers (1 hour)
         header('Cache-Control: public, max-age=3600');
 
+        // Note: Translations are already in the correct format (flat key-value pairs)
+        // No camelCase conversion needed for translation keys
+        http_response_code(200);
         echo json_encode($flatTranslations);
     }
 
@@ -82,9 +85,7 @@ class TranslationController
 
         $languages = $stmt->fetchAll();
 
-        echo json_encode([
-            'data' => $languages
-        ]);
+        JsonHelper::send(['data' => $languages]);
     }
 
     /**
@@ -109,13 +110,12 @@ class TranslationController
 
             $translations = $stmt->fetchAll();
 
-            echo json_encode([
+            JsonHelper::send([
                 'data' => $translations,
                 'total' => count($translations)
             ]);
         } catch (\Exception $e) {
-            http_response_code(403);
-            echo json_encode(['error' => $e->getMessage()]);
+            JsonHelper::error($e->getMessage(), 403);
         }
     }
 
@@ -134,8 +134,7 @@ class TranslationController
             $required = ['translation_key', 'language_code', 'translation_text'];
             foreach ($required as $field) {
                 if (empty($input[$field])) {
-                    http_response_code(400);
-                    echo json_encode(['error' => "Field required: {$field}"]);
+                    JsonHelper::error("Field required: {$field}", 400);
                     return;
                 }
             }
@@ -170,10 +169,7 @@ class TranslationController
                     $existing['id']
                 ]);
 
-                echo json_encode([
-                    'message' => 'Translation updated successfully',
-                    'id' => $existing['id']
-                ]);
+                JsonHelper::success('Translation updated successfully', ['id' => $existing['id']]);
             } else {
                 // Create new
                 $translationId = $this->generateUUID();
@@ -193,15 +189,10 @@ class TranslationController
                     $userId
                 ]);
 
-                http_response_code(201);
-                echo json_encode([
-                    'message' => 'Translation created successfully',
-                    'id' => $translationId
-                ]);
+                JsonHelper::success('Translation created successfully', ['id' => $translationId], 201);
             }
         } catch (\Exception $e) {
-            http_response_code(403);
-            echo json_encode(['error' => $e->getMessage()]);
+            JsonHelper::error($e->getMessage(), 403);
         }
     }
 
@@ -217,10 +208,9 @@ class TranslationController
             $stmt = $this->db->prepare("DELETE FROM translations WHERE id = ?");
             $stmt->execute([$translationId]);
 
-            echo json_encode(['message' => 'Translation deleted successfully']);
+            JsonHelper::success('Translation deleted successfully');
         } catch (\Exception $e) {
-            http_response_code(403);
-            echo json_encode(['error' => $e->getMessage()]);
+            JsonHelper::error($e->getMessage(), 403);
         }
     }
 
@@ -236,8 +226,7 @@ class TranslationController
             $input = json_decode(file_get_contents('php://input'), true);
 
             if (!isset($input['translations']) || !is_array($input['translations'])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'translations array required']);
+                JsonHelper::error('translations array required', 400);
                 return;
             }
 
@@ -294,14 +283,13 @@ class TranslationController
                 }
             }
 
-            echo json_encode([
+            JsonHelper::send([
                 'message' => "Imported {$imported} translations",
                 'imported' => $imported,
                 'errors' => $errors
             ]);
         } catch (\Exception $e) {
-            http_response_code(403);
-            echo json_encode(['error' => $e->getMessage()]);
+            JsonHelper::error($e->getMessage(), 403);
         }
     }
 

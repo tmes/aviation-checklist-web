@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Database\Connection;
+use App\Helpers\JsonHelper;
 use App\Services\JWTService;
 use App\Services\EmailService;
 use PDO;
@@ -27,22 +28,17 @@ class AuthController
 
         // Validation
         if (empty($input["email"]) || empty($input["password"])) {
-            http_response_code(400);
-            echo json_encode(["error" => "Email and password are required"]);
+            JsonHelper::error("Email and password are required", 400);
             return;
         }
 
         if (!filter_var($input["email"], FILTER_VALIDATE_EMAIL)) {
-            http_response_code(400);
-            echo json_encode(["error" => "Invalid email format"]);
+            JsonHelper::error("Invalid email format", 400);
             return;
         }
 
         if (strlen($input["password"]) < 6) {
-            http_response_code(400);
-            echo json_encode([
-                "error" => "Password must be at least 6 characters",
-            ]);
+            JsonHelper::error("Password must be at least 6 characters", 400);
             return;
         }
 
@@ -51,8 +47,7 @@ class AuthController
         $stmt->execute([$input["email"]]);
 
         if ($stmt->fetch()) {
-            http_response_code(409);
-            echo json_encode(["error" => "Email already registered"]);
+            JsonHelper::error("Email already registered", 409);
             return;
         }
 
@@ -94,17 +89,16 @@ class AuthController
                 // Continue anyway - user can request resend
             }
 
-            http_response_code(201);
-            echo json_encode([
-                "message" => "Account created. Please check your email to verify your account.",
-                "emailVerificationSent" => true,
-                "email" => $input["email"],
-            ]);
+            JsonHelper::success(
+                "Account created. Please check your email to verify your account.",
+                [
+                    "email_verification_sent" => true,
+                    "email" => $input["email"],
+                ],
+                201
+            );
         } catch (PDOException $e) {
-            http_response_code(500);
-            echo json_encode([
-                "error" => "Registration failed: " . $e->getMessage(),
-            ]);
+            JsonHelper::error("Registration failed: " . $e->getMessage(), 500);
         }
     }
 
@@ -118,14 +112,13 @@ class AuthController
 
         // Validation
         if (empty($input["email"]) || empty($input["password"])) {
-            http_response_code(400);
-            echo json_encode(["error" => "Email and password are required"]);
+            JsonHelper::error("Email and password are required", 400);
             return;
         }
 
         // Find user
         $stmt = $this->db->prepare("
-			SELECT id, email, password_hash, first_name, last_name, email_verified
+			SELECT id, email, password_hash, first_name, last_name, email_verified, is_super_admin
 			FROM users
 			WHERE email = ?
 		");
@@ -133,15 +126,13 @@ class AuthController
         $user = $stmt->fetch();
 
         if (!$user) {
-            http_response_code(401);
-            echo json_encode(["error" => "Invalid email or password"]);
+            JsonHelper::error("Invalid email or password", 401);
             return;
         }
 
         // Verify password
         if (!password_verify($input["password"], $user["password_hash"])) {
-            http_response_code(401);
-            echo json_encode(["error" => "Invalid email or password"]);
+            JsonHelper::error("Invalid email or password", 401);
             return;
         }
 
@@ -169,10 +160,10 @@ class AuthController
         // Soft warning for unverified email (Optie B - lenient approach)
         if (!$user["email_verified"]) {
             $response["warning"] = "Email not verified";
-            $response["emailVerificationRequired"] = true;
+            $response["email_verification_required"] = true;
         }
 
-        echo json_encode($response);
+        JsonHelper::send($response);
     }
 
     /**
@@ -184,12 +175,11 @@ class AuthController
         $user = $this->getUserById($userId);
 
         if (!$user) {
-            http_response_code(404);
-            echo json_encode(["error" => "User not found"]);
+            JsonHelper::error("User not found", 404);
             return;
         }
 
-        echo json_encode(["data" => $user]);
+        JsonHelper::send(["data" => $user]);
     }
 
     /**
@@ -201,8 +191,7 @@ class AuthController
         $input = json_decode(file_get_contents("php://input"), true);
 
         if (empty($input["token"])) {
-            http_response_code(400);
-            echo json_encode(["error" => "Verification token is required"]);
+            JsonHelper::error("Verification token is required", 400);
             return;
         }
 
@@ -216,18 +205,13 @@ class AuthController
         $user = $stmt->fetch();
 
         if (!$user) {
-            http_response_code(404);
-            echo json_encode(["error" => "Invalid or expired verification token"]);
+            JsonHelper::error("Invalid or expired verification token", 404);
             return;
         }
 
         // Check if token expired
         if (strtotime($user["email_verification_expires"]) < time()) {
-            http_response_code(400);
-            echo json_encode([
-                "error" => "Verification token has expired",
-                "canResend" => true,
-            ]);
+            JsonHelper::error("Verification token has expired", 400, ["can_resend" => true]);
             return;
         }
 
@@ -257,7 +241,7 @@ class AuthController
         // Get updated user data
         $userData = $this->getUserById($user["id"]);
 
-        echo json_encode([
+        JsonHelper::send([
             "message" => "Email verified successfully",
             "token" => $token,
             "user" => $userData,
@@ -273,8 +257,7 @@ class AuthController
         $input = json_decode(file_get_contents("php://input"), true);
 
         if (empty($input["email"])) {
-            http_response_code(400);
-            echo json_encode(["error" => "Email is required"]);
+            JsonHelper::error("Email is required", 400);
             return;
         }
 
@@ -289,17 +272,13 @@ class AuthController
 
         if (!$user) {
             // Don't reveal if email exists (security)
-            http_response_code(200);
-            echo json_encode([
-                "message" => "If that email is registered, a verification email has been sent.",
-            ]);
+            JsonHelper::success("If that email is registered, a verification email has been sent.");
             return;
         }
 
         // Check if already verified
         if ($user["email_verified"]) {
-            http_response_code(400);
-            echo json_encode(["error" => "Email already verified"]);
+            JsonHelper::error("Email already verified", 400);
             return;
         }
 
@@ -324,14 +303,11 @@ class AuthController
                 $user["first_name"]
             );
         } catch (\Exception $e) {
-            http_response_code(500);
-            echo json_encode(["error" => "Failed to send verification email"]);
+            JsonHelper::error("Failed to send verification email", 500);
             return;
         }
 
-        echo json_encode([
-            "message" => "Verification email sent",
-        ]);
+        JsonHelper::success("Verification email sent");
     }
 
     /**
