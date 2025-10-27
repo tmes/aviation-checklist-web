@@ -151,13 +151,14 @@ export interface Checklist {
 
 export interface ChecklistItem {
   id: string;
-  checklistId: string;
+  checklistId: string; // Backend sends camelCase
   phase: ChecklistPhase;
-  itemText: string;
+  itemText: string; // Backend sends camelCase
   expectedValue?: string | null;
+  notes?: string | null; // Permanent notes (part of item definition)
   sortOrder: number;
-  isCritical: boolean;
-  requiresConfirmation: boolean;
+  isCritical: boolean; // Backend sends camelCase
+  requiresConfirmation: boolean; // Backend sends camelCase
   createdAt: string;
   updatedAt: string;
 }
@@ -185,8 +186,9 @@ export interface CreateChecklistData {
   description?: string;
   items?: {
     phase: ChecklistPhase;
-    itemText: string;
+    itemText: string; // Frontend sends camelCase, backend converts
     expectedValue?: string;
+    notes?: string; // Permanent notes
     sortOrder?: number;
     isCritical?: boolean;
     requiresConfirmation?: boolean;
@@ -200,8 +202,9 @@ export interface UpdateChecklistData {
   isActive?: boolean;
   items?: {
     phase: ChecklistPhase;
-    itemText: string;
+    itemText: string; // Frontend sends camelCase, backend converts
     expectedValue?: string;
+    notes?: string; // Permanent notes
     sortOrder?: number;
     isCritical?: boolean;
     requiresConfirmation?: boolean;

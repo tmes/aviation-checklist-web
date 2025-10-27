@@ -41,7 +41,7 @@ export default function ChecklistDetail() {
   }, [id, token]);
 
   const loadChecklist = async (checklistId: string) => {
-    if (!token) return;
+    if (!token || !checklistId) return;
 
     try {
       setLoading(true);
@@ -207,7 +207,7 @@ export default function ChecklistDetail() {
           <button
             onClick={handleStartExecution}
             disabled={starting}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 font-medium disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-transparent border-[3px] border-green-600 dark:border-green-500 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-600 dark:hover:bg-green-500 hover:text-white dark:hover:text-gray-900 font-bold disabled:opacity-50 transition-all"
           >
             <Play className="h-5 w-5" />
             {starting ? 'Starting...' : 'Start Checklist'}
@@ -275,6 +275,11 @@ export default function ChecklistDetail() {
                                 {item.expectedValue && (
                                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                                     Expected: <span className="font-medium">{item.expectedValue}</span>
+                                  </p>
+                                )}
+                                {item.notes && (
+                                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 italic">
+                                    Note: {item.notes}
                                   </p>
                                 )}
                               </div>

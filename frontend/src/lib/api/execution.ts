@@ -19,18 +19,19 @@ export interface ChecklistExecution {
 
 export interface ChecklistExecutionItem {
   id: string;
-  checklist_id: string;
+  checklistId: string;
   phase: string;
-  itemText: string;
-  expected_value?: string;
-  sort_order: number;
-  is_critical: boolean;
-  requires_confirmation: boolean;
-  execution_status?: 'completed' | 'skipped' | 'failed' | null;
-  execution_action?: string;
-  execution_notes?: string;
-  execution_actual_value?: string;
-  execution_completed_at?: string;
+  itemText: string; // Backend sends camelCase
+  expectedValue?: string;
+  notes?: string; // Permanent notes
+  sortOrder: number;
+  isCritical: boolean;
+  requiresConfirmation: boolean;
+  executionStatus?: 'completed' | 'skipped' | 'failed' | null;
+  executionAction?: string;
+  executionNotes?: string; // Runtime notes
+  executionActualValue?: string;
+  executionCompletedAt?: string;
 }
 
 export interface ExecutionResponse {

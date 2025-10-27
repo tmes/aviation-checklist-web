@@ -298,8 +298,8 @@ class ChecklistController
     private function addChecklistItems(string $checklistId, array $items): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO checklist_items (id, checklist_id, phase, item_text, expected_value, sort_order, is_critical, requires_confirmation)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO checklist_items (id, checklist_id, phase, item_text, expected_value, notes, sort_order, is_critical, requires_confirmation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         foreach ($items as $index => $item) {
@@ -309,6 +309,7 @@ class ChecklistController
                 $item["phase"],
                 $item["itemText"],
                 $item["expectedValue"] ?? null,
+                $item["notes"] ?? null,
                 $item["sortOrder"] ?? $index,
                 ($item["isCritical"] ?? false) ? 1 : 0,
                 ($item["requiresConfirmation"] ?? true) ? 1 : 0,

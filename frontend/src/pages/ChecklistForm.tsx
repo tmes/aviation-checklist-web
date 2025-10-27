@@ -11,6 +11,7 @@ interface ChecklistItemFormData {
   phase: ChecklistPhase;
   itemText: string;
   expectedValue?: string;
+  notes?: string; // Permanent notes for this item
   sortOrder?: number;
   isCritical: boolean;
   requiresConfirmation: boolean;
@@ -79,6 +80,7 @@ export default function ChecklistForm() {
             phase: item.phase,
             itemText: item.itemText,
             expectedValue: item.expectedValue || '',
+            notes: item.notes || '',
             sortOrder: item.sortOrder,
             isCritical: item.isCritical,
             requiresConfirmation: item.requiresConfirmation,
@@ -99,6 +101,7 @@ export default function ChecklistForm() {
         phase: 'pre_flight',
         itemText: '',
         expectedValue: '',
+        notes: '',
         isCritical: false,
         requiresConfirmation: true,
       },
@@ -323,6 +326,20 @@ export default function ChecklistForm() {
                           onChange={(e) => updateItem(index, 'expectedValue', e.target.value)}
                           className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           placeholder="e.g., BOTH"
+                        />
+                      </div>
+
+                      {/* Notes */}
+                      <div className="md:col-span-3">
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                          Notes (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={item.notes || ''}
+                          onChange={(e) => updateItem(index, 'notes', e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          placeholder="e.g., should be green, 25 PSI"
                         />
                       </div>
 

@@ -21,6 +21,7 @@ import {
   List,
   ChevronLeft,
   ChevronRight,
+  AlertTriangle,
 } from 'lucide-react';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -40,6 +41,12 @@ const PHASE_LABELS: Record<string, string> = {
   emergency: 'Emergency',
 };
 
+const PHASE_ORDER = [
+  'pre_flight', 'startup', 'taxi', 'before_takeoff', 'takeoff',
+  'climb', 'cruise', 'descent', 'approach', 'landing',
+  'after_landing', 'shutdown', 'post_flight', 'emergency'
+];
+
 export default function ChecklistExecution() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -50,12 +57,22 @@ export default function ChecklistExecution() {
   const [error, setError] = useState<string | null>(null);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [showItemList, setShowItemList] = useState(false);
+  const [showFailedModal, setShowFailedModal] = useState(false);
+  const [itemNotes, setItemNotes] = useState(''); // General notes for any action
+  const [showPhaseWarning, setShowPhaseWarning] = useState(false);
+  const [phaseWarningMessage, setPhaseWarningMessage] = useState('');
+  const [pendingNextIndex, setPendingNextIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (id && token) {
       loadExecution(id);
     }
   }, [id, token]);
+
+  // Clear notes when moving to a different item
+  useEffect(() => {
+    setItemNotes('');
+  }, [currentItemIndex]);
 
   const loadExecution = async (executionId: string) => {
     if (!token) return;
@@ -67,7 +84,7 @@ export default function ChecklistExecution() {
 
       // Find first uncompleted item
       if (data.items) {
-        const firstUncompleted = data.items.findIndex((item) => !item.execution_status);
+        const firstUncompleted = data.items.findIndex((item) => !item.executionStatus);
         if (firstUncompleted !== -1) {
           setCurrentItemIndex(firstUncompleted);
         }
@@ -81,19 +98,50 @@ export default function ChecklistExecution() {
     }
   };
 
-  const handleItemAction = async (action: 'completed' | 'skipped' | 'failed') => {
+  const handleItemAction = async (action: 'completed' | 'skipped') => {
     if (!token || !id || !execution?.items) return;
 
     const currentItem = execution.items[currentItemIndex];
     if (!currentItem) return;
 
     try {
-      await updateExecutionItem(token, id, currentItem.id, { action });
+      // Use itemNotes if provided
+      await updateExecutionItem(token, id, currentItem.id, {
+        action,
+        notes: itemNotes || undefined
+      });
       await loadExecution(id);
+
+      // Clear notes after successful action
+      setItemNotes('');
 
       // Move to next item if not at the end
       if (currentItemIndex < execution.items.length - 1) {
-        setCurrentItemIndex(currentItemIndex + 1);
+        goToNext();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update item');
+    }
+  };
+
+  const handleFailedAction = async () => {
+    if (!token || !id || !execution?.items) return;
+
+    const currentItem = execution.items[currentItemIndex];
+    if (!currentItem) return;
+
+    try {
+      await updateExecutionItem(token, id, currentItem.id, {
+        action: 'failed',
+        notes: itemNotes || undefined,
+      });
+      await loadExecution(id);
+      setShowFailedModal(false);
+      setItemNotes('');
+
+      // Move to next item if not at the end
+      if (currentItemIndex < execution.items.length - 1) {
+        goToNext();
       }
     } catch (err: any) {
       alert(err.message || 'Failed to update item');
@@ -135,9 +183,53 @@ export default function ChecklistExecution() {
     }
   };
 
+  const checkPhaseTransition = (nextIndex: number) => {
+    if (!execution?.items) return true;
+
+    const currentItem = execution.items[currentItemIndex];
+    const nextItem = execution.items[nextIndex];
+
+    if (!currentItem || !nextItem) return true;
+
+    // Check if we're moving to a different phase
+    if (currentItem.phase !== nextItem.phase) {
+      // Find all items in current phase
+      const currentPhaseItems = execution.items.filter(item => item.phase === currentItem.phase);
+      const incompleteItems = currentPhaseItems.filter(item => !item.executionStatus);
+
+      if (incompleteItems.length > 0) {
+        const incompleteList = incompleteItems.map(item => `• ${item.itemText}`).join('\n');
+        setPhaseWarningMessage(
+          `You have ${incompleteItems.length} incomplete item(s) in ${PHASE_LABELS[currentItem.phase]}:\n\n${incompleteList}\n\nAre you sure you want to continue to ${PHASE_LABELS[nextItem.phase]}?`
+        );
+        setPendingNextIndex(nextIndex);
+        setShowPhaseWarning(true);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const confirmPhaseTransition = () => {
+    if (pendingNextIndex !== null) {
+      setCurrentItemIndex(pendingNextIndex);
+      setPendingNextIndex(null);
+    }
+    setShowPhaseWarning(false);
+  };
+
+  const cancelPhaseTransition = () => {
+    setPendingNextIndex(null);
+    setShowPhaseWarning(false);
+  };
+
   const goToNext = () => {
-    if (currentItemIndex < (execution?.items?.length || 0) - 1) {
-      setCurrentItemIndex(currentItemIndex + 1);
+    const nextIndex = currentItemIndex + 1;
+    if (nextIndex < (execution?.items?.length || 0)) {
+      if (checkPhaseTransition(nextIndex)) {
+        setCurrentItemIndex(nextIndex);
+      }
     }
   };
 
@@ -164,10 +256,15 @@ export default function ChecklistExecution() {
 
   const items = execution.items || [];
   const currentItem = items[currentItemIndex];
-  const completedCount = items.filter((item) => item.execution_status === 'completed').length;
-  const progress = items.length > 0 ? (completedCount / items.length) * 100 : 0;
+  const nextItem = currentItemIndex < items.length - 1 ? items[currentItemIndex + 1] : null;
+  const completedCount = items.filter((item) => item.executionStatus).length;
+  const totalCount = items.length;
+  const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  // Group items by phase for sidebar/list
+  const isLastItem = currentItemIndex === items.length - 1;
+  const allItemsCompleted = completedCount === totalCount;
+
+  // Group items by phase
   const groupedItems = items.reduce((acc, item, index) => {
     if (!acc[item.phase]) {
       acc[item.phase] = [];
@@ -199,16 +296,19 @@ export default function ChecklistExecution() {
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
                 <span>Progress</span>
-                <span className="font-medium">
-                  {completedCount}/{items.length}
+                <span className="font-bold text-base">
+                  {progress}%
                 </span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-green-600 dark:bg-green-500 h-2 rounded-full transition-all duration-300"
+                  className="bg-green-600 dark:bg-green-500 h-3 rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {completedCount} of {totalCount} items
+              </p>
             </div>
           </div>
 
@@ -237,13 +337,13 @@ export default function ChecklistExecution() {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {item.execution_status === 'completed' && (
+                        {item.executionStatus === 'completed' && (
                           <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
                         )}
-                        {item.execution_status === 'skipped' && (
+                        {item.executionStatus === 'skipped' && (
                           <SkipForward className="h-4 w-4 flex-shrink-0" />
                         )}
-                        {item.execution_status === 'failed' && <X className="h-4 w-4 flex-shrink-0" />}
+                        {item.executionStatus === 'failed' && <X className="h-4 w-4 flex-shrink-0" />}
                         <span className="truncate">{item.itemText}</span>
                       </div>
                     </button>
@@ -254,30 +354,35 @@ export default function ChecklistExecution() {
           </div>
         </div>
 
-        {/* Main Content - Current Item */}
+        {/* Main Content */}
         <div className="flex-1 flex flex-col">
           {currentItem ? (
             <>
               {/* Header with progress - Mobile */}
               <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <button
                     onClick={() => navigate(`/checklists/${execution.checklist_id}`)}
                     className="p-2 -ml-2 text-gray-600 dark:text-gray-400"
                   >
                     <ArrowLeft className="h-5 w-5" />
                   </button>
-                  <button
-                    onClick={() => setShowItemList(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    <List className="h-4 w-4" />
-                    {completedCount}/{items.length}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                      {progress}%
+                    </span>
+                    <button
+                      onClick={() => setShowItemList(true)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      <List className="h-4 w-4" />
+                      {completedCount}/{totalCount}
+                    </button>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-green-600 dark:bg-green-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-green-600 dark:bg-green-500 h-3 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -288,65 +393,86 @@ export default function ChecklistExecution() {
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
                   {/* Phase Badge */}
                   <div className="mb-4 flex items-center justify-between">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                       {PHASE_LABELS[currentItem.phase] || currentItem.phase}
                     </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {currentItemIndex + 1} / {items.length}
+                    <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                      {currentItemIndex + 1} / {totalCount}
                     </span>
                   </div>
 
                   {/* Item Text */}
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 leading-tight">
                     {currentItem.itemText}
                   </h1>
 
-                  {/* Expected Value */}
-                  {currentItem.expected_value && (
-                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
-                        Expected: <span className="font-bold">{currentItem.expected_value}</span>
+                  {/* Critical and Confirmation Badges - PROMINENT */}
+                  {(currentItem.isCritical || currentItem.requiresConfirmation) && (
+                    <div className="mb-6 space-y-2">
+                      {currentItem.isCritical && (
+                        <div className="flex items-center gap-3 p-4 bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-500 dark:border-orange-600 rounded-xl">
+                          <AlertTriangle className="h-6 w-6 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                          <span className="text-base font-bold text-orange-900 dark:text-orange-300">
+                            CRITICAL ITEM - Extra attention required
+                          </span>
+                        </div>
+                      )}
+                      {currentItem.requiresConfirmation && (
+                        <div className="flex items-center gap-3 p-4 bg-purple-100 dark:bg-purple-900/30 border-2 border-purple-500 dark:border-purple-600 rounded-xl">
+                          <CheckCircle2 className="h-6 w-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                          <span className="text-base font-bold text-purple-900 dark:text-purple-300">
+                            CONFIRMATION REQUIRED
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Expected Value - PROMINENT */}
+                  {currentItem.expectedValue && (
+                    <div className="mb-6 p-5 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl">
+                      <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-2">
+                        Expected Response:
+                      </p>
+                      <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">
+                        {currentItem.expectedValue}
                       </p>
                     </div>
                   )}
 
-                  {/* Badges */}
-                  <div className="mb-6 flex flex-wrap gap-2">
-                    {currentItem.is_critical && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
-                        <AlertCircle className="h-4 w-4" />
-                        Critical
-                      </span>
-                    )}
-                    {currentItem.requires_confirmation && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Confirm
-                      </span>
-                    )}
-                  </div>
+                  {/* Permanent Notes - Part of checklist item definition */}
+                  {currentItem.notes && (
+                    <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-600 rounded-lg">
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">
+                        Note:
+                      </p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        {currentItem.notes}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
-                  {!currentItem.execution_status ? (
-                    <div className="space-y-3">
+                  {!currentItem.executionStatus ? (
+                    <div className="space-y-3 mb-6">
                       <button
                         onClick={() => handleItemAction('completed')}
-                        className="w-full flex items-center justify-center gap-3 px-6 py-4 sm:py-5 bg-green-600 dark:bg-green-500 text-white rounded-xl hover:bg-green-700 dark:hover:bg-green-600 font-semibold text-lg shadow-lg transition-all active:scale-95"
+                        className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-transparent border-[3px] border-green-600 dark:border-green-500 text-green-600 dark:text-green-400 rounded-xl hover:bg-green-600 dark:hover:bg-green-500 hover:text-white dark:hover:text-gray-900 font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
                       >
-                        <Check className="h-6 w-6" />
+                        <Check className="h-7 w-7" />
                         <span>Complete</span>
                       </button>
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           onClick={() => handleItemAction('skipped')}
-                          className="flex items-center justify-center gap-2 px-4 py-3 bg-yellow-600 dark:bg-yellow-500 text-white rounded-xl hover:bg-yellow-700 dark:hover:bg-yellow-600 font-medium shadow-md transition-all active:scale-95"
+                          className="flex items-center justify-center gap-2 px-4 py-4 bg-transparent border-2 border-yellow-600 dark:border-yellow-500 text-yellow-600 dark:text-yellow-400 rounded-xl hover:bg-yellow-600 dark:hover:bg-yellow-500 hover:text-white dark:hover:text-gray-900 font-semibold shadow-md transition-all active:scale-[0.98]"
                         >
                           <SkipForward className="h-5 w-5" />
                           <span>Skip</span>
                         </button>
                         <button
-                          onClick={() => handleItemAction('failed')}
-                          className="flex items-center justify-center gap-2 px-4 py-3 bg-red-600 dark:bg-red-500 text-white rounded-xl hover:bg-red-700 dark:hover:bg-red-600 font-medium shadow-md transition-all active:scale-95"
+                          onClick={() => setShowFailedModal(true)}
+                          className="flex items-center justify-center gap-2 px-4 py-4 bg-transparent border-2 border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 dark:hover:bg-red-500 hover:text-white dark:hover:text-gray-900 font-semibold shadow-md transition-all active:scale-[0.98]"
                         >
                           <X className="h-5 w-5" />
                           <span>Failed</span>
@@ -354,52 +480,94 @@ export default function ChecklistExecution() {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-6 bg-gray-100 dark:bg-gray-800 rounded-xl text-center border-2 border-gray-200 dark:border-gray-700">
+                    <div className="p-6 bg-gray-100 dark:bg-gray-800 rounded-xl text-center border-2 border-gray-200 dark:border-gray-700 mb-6">
                       <p className="text-lg text-gray-600 dark:text-gray-400">
-                        Marked as:{' '}
-                        <span className="font-semibold capitalize text-gray-900 dark:text-gray-100">
-                          {currentItem.execution_status}
+                        Status:{' '}
+                        <span className={`font-bold capitalize ${
+                          currentItem.executionStatus === 'completed' ? 'text-green-600 dark:text-green-400' :
+                          currentItem.executionStatus === 'skipped' ? 'text-yellow-600 dark:text-yellow-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`}>
+                          {currentItem.executionStatus}
                         </span>
                       </p>
+                      {currentItem.executionNotes && (
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
+                          Note: {currentItem.executionNotes}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Runtime Notes Field - BELOW action buttons */}
+                  {!currentItem.executionStatus && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Additional Notes (Optional)
+                      </label>
+                      <textarea
+                        value={itemNotes}
+                        onChange={(e) => setItemNotes(e.target.value)}
+                        rows={2}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-500 resize-none"
+                        placeholder="Add any additional notes or observations during execution..."
+                      />
+                    </div>
+                  )}
+
+                  {/* Next Item Preview */}
+                  {nextItem && !isLastItem && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                        Next:
+                      </p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                        {nextItem.itemText}
+                      </p>
+                      {nextItem.phase !== currentItem.phase && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-semibold">
+                          → {PHASE_LABELS[nextItem.phase]}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Bottom Navigation Bar */}
-              <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 sm:p-4">
+              <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 sm:p-4 shadow-lg">
                 <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
                   <button
                     onClick={goToPrevious}
                     disabled={currentItemIndex === 0}
-                    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-medium"
                   >
                     <ChevronLeft className="h-5 w-5" />
-                    <span className="hidden sm:inline">Previous</span>
+                    <span className="hidden sm:inline">Prev</span>
                   </button>
 
                   <div className="flex gap-2">
                     <button
                       onClick={handleAbort}
-                      className="px-3 sm:px-4 py-2 text-sm border border-red-600 dark:border-red-400 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="px-3 sm:px-4 py-2.5 text-sm font-medium border-2 border-red-600 dark:border-red-400 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       Abort
                     </button>
-                    {currentItemIndex === items.length - 1 && completedCount === items.length && (
+                    {isLastItem && allItemsCompleted && (
                       <button
                         onClick={handleComplete}
-                        className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 font-medium transition-colors"
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm bg-transparent border-2 border-green-600 dark:border-green-500 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-600 dark:hover:bg-green-500 hover:text-white dark:hover:text-gray-900 font-bold shadow-lg transition-all"
                       >
                         <Flag className="h-4 w-4" />
-                        <span className="hidden sm:inline">Complete</span>
+                        <span>Complete</span>
                       </button>
                     )}
                   </div>
 
                   <button
                     onClick={goToNext}
-                    disabled={currentItemIndex === items.length - 1}
-                    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    disabled={isLastItem}
+                    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-medium"
                   >
                     <span className="hidden sm:inline">Next</span>
                     <ChevronRight className="h-5 w-5" />
@@ -414,6 +582,78 @@ export default function ChecklistExecution() {
           )}
         </div>
       </div>
+
+      {/* Failed Modal */}
+      {showFailedModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowFailedModal(false)}>
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              Item Failed - Add Notes
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Describe what failed or what the issue is (optional):
+            </p>
+            <textarea
+              value={itemNotes}
+              onChange={(e) => setItemNotes(e.target.value)}
+              rows={4}
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
+              placeholder="e.g., Fuel selector stuck, indicator light not working..."
+            />
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowFailedModal(false);
+                  // Keep notes - user might want to try a different action
+                }}
+                className="flex-1 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFailedAction}
+                className="flex-1 px-4 py-3 bg-red-600 dark:bg-red-500 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 font-bold transition-colors"
+              >
+                Mark as Failed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase Warning Modal */}
+      {showPhaseWarning && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="h-8 w-8 text-orange-500" />
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                Incomplete Phase
+              </h3>
+            </div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line mb-6">
+              {phaseWarningMessage}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={cancelPhaseTransition}
+                className="flex-1 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors"
+              >
+                Stay Here
+              </button>
+              <button
+                onClick={confirmPhaseTransition}
+                className="flex-1 px-4 py-3 bg-orange-600 dark:bg-orange-500 text-white rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 font-bold transition-colors"
+              >
+                Continue Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Item List Modal */}
       {showItemList && (
@@ -432,8 +672,8 @@ export default function ChecklistExecution() {
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {completedCount} of {items.length} completed
+              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                {completedCount} of {totalCount} completed ({progress}%)
               </div>
             </div>
 
@@ -452,24 +692,24 @@ export default function ChecklistExecution() {
                         className={`w-full text-left px-3 py-3 rounded-lg text-sm mb-1 transition-colors ${
                           index === currentItemIndex
                             ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-400 font-medium'
-                            : item.execution_status === 'completed'
+                            : item.executionStatus === 'completed'
                             ? 'bg-green-50 dark:bg-green-900/20 text-green-900 dark:text-green-400'
-                            : item.execution_status === 'skipped'
+                            : item.executionStatus === 'skipped'
                             ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-900 dark:text-yellow-400'
-                            : item.execution_status === 'failed'
+                            : item.executionStatus === 'failed'
                             ? 'bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-400'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          {item.execution_status === 'completed' && (
+                          {item.executionStatus === 'completed' && (
                             <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
                           )}
-                          {item.execution_status === 'skipped' && (
+                          {item.executionStatus === 'skipped' && (
                             <SkipForward className="h-5 w-5 flex-shrink-0" />
                           )}
-                          {item.execution_status === 'failed' && <X className="h-5 w-5 flex-shrink-0" />}
-                          {!item.execution_status && (
+                          {item.executionStatus === 'failed' && <X className="h-5 w-5 flex-shrink-0" />}
+                          {!item.executionStatus && (
                             <div className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600 flex-shrink-0" />
                           )}
                           <span className="flex-1">{item.itemText}</span>

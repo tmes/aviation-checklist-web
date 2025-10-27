@@ -22,12 +22,15 @@ class JsonHelper
         "email_verified",
         "is_super_admin",
         "is_active",
+        "is_available",
         "is_public",
         "is_template",
         "is_default",
         "can_edit",
         "can_delete",
         "allow_guest_access",
+        "is_critical",              // Checklist items
+        "requires_confirmation",    // Checklist items
     ];
 
     /**
