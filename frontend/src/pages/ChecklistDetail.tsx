@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { getChecklist, deleteChecklist } from '../lib/api/checklist';
+import { startExecution } from '../lib/api/execution';
 import Navigation from '../components/Navigation';
 import type { Checklist, ChecklistItem, ChecklistPhase } from '../types';
 import { ArrowLeft, Edit, Trash2, Play, AlertCircle, CheckCircle } from 'lucide-react';
@@ -31,6 +32,7 @@ export default function ChecklistDetail() {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     if (id && token) {
@@ -61,6 +63,20 @@ export default function ChecklistDetail() {
       navigate('/checklists');
     } catch (err: any) {
       alert(err.message || 'Failed to delete checklist');
+    }
+  };
+
+  const handleStartExecution = async () => {
+    if (!token || !id) return;
+
+    try {
+      setStarting(true);
+      const execution = await startExecution(token, { checklistId: id });
+      navigate(`/executions/${execution.id}`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to start execution');
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -189,11 +205,12 @@ export default function ChecklistDetail() {
         {/* Start Checklist Button */}
         <div className="mb-6">
           <button
-            onClick={() => alert('Checklist execution coming soon!')}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 font-medium"
+            onClick={handleStartExecution}
+            disabled={starting}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 font-medium disabled:opacity-50"
           >
             <Play className="h-5 w-5" />
-            Start Checklist
+            {starting ? 'Starting...' : 'Start Checklist'}
           </button>
         </div>
 

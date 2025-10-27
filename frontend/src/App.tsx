@@ -14,6 +14,7 @@ import AircraftForm from './pages/AircraftForm';
 import Checklists from './pages/Checklists';
 import ChecklistForm from './pages/ChecklistForm';
 import ChecklistDetail from './pages/ChecklistDetail';
+import ChecklistExecution from './pages/ChecklistExecution';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -93,6 +94,16 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <ChecklistDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Execution routes */}
+      <Route
+        path="/executions/:id"
+        element={
+          <ProtectedRoute>
+            <ChecklistExecution />
           </ProtectedRoute>
         }
       />

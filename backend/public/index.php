@@ -28,6 +28,7 @@ $dotenv->load();
 use App\Controllers\AuthController;
 use App\Controllers\AircraftController;
 use App\Controllers\ChecklistController;
+use App\Controllers\ExecutionController;
 use App\Controllers\TranslationController;
 use App\Helpers\JsonHelper;
 use App\Middleware\AuthMiddleware;
@@ -177,6 +178,47 @@ try {
         $checklistId = $matches[1];
         $controller = new ChecklistController();
         $controller->delete($userId, $checklistId);
+        exit();
+    }
+
+    // Execution routes (protected)
+    if ($uri === "/api/executions" && $method === "POST") {
+        $userId = AuthMiddleware::authenticate();
+        $controller = new ExecutionController();
+        $controller->start($userId);
+        exit();
+    }
+
+    if (preg_match('#^/api/executions/([a-f0-9-]{36})$#', $uri, $matches) && $method === "GET") {
+        $userId = AuthMiddleware::authenticate();
+        $executionId = $matches[1];
+        $controller = new ExecutionController();
+        $controller->get($userId, $executionId);
+        exit();
+    }
+
+    if (preg_match('#^/api/executions/([a-f0-9-]{36})/items/([a-f0-9-]{36})$#', $uri, $matches) && $method === "POST") {
+        $userId = AuthMiddleware::authenticate();
+        $executionId = $matches[1];
+        $itemId = $matches[2];
+        $controller = new ExecutionController();
+        $controller->updateItem($userId, $executionId, $itemId);
+        exit();
+    }
+
+    if (preg_match('#^/api/executions/([a-f0-9-]{36})/complete$#', $uri, $matches) && $method === "POST") {
+        $userId = AuthMiddleware::authenticate();
+        $executionId = $matches[1];
+        $controller = new ExecutionController();
+        $controller->complete($userId, $executionId);
+        exit();
+    }
+
+    if (preg_match('#^/api/executions/([a-f0-9-]{36})/abort$#', $uri, $matches) && $method === "POST") {
+        $userId = AuthMiddleware::authenticate();
+        $executionId = $matches[1];
+        $controller = new ExecutionController();
+        $controller->abort($userId, $executionId);
         exit();
     }
 
