@@ -130,42 +130,82 @@ export type ChecklistStatus = "draft" | "published" | "archived";
 
 export interface Checklist {
   id: string;
-  ownerType: OwnerType;
-  ownerUserId?: string;
-  ownerOrgId?: string;
-  aircraftId?: string;
-  aircraftTypeId?: string;
-  title: string;
-  description?: string;
-  category: ChecklistCategory;
-  phase: string;
-  sequenceInPhase: number;
-  version: string;
-  status: ChecklistStatus;
-  isTemplate: boolean;
-  parentChecklistId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  publishedAt?: Date;
-  createdBy: string;
-  updatedBy?: string;
+  organizationId?: string | null;
+  ownerUserId?: string | null;
+  aircraftId?: string | null;
+  templateId?: string | null;
+  name: string;
+  description?: string | null;
+  currentVersion?: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  // Joined data from backend
+  aircraftRegistration?: string;
+  aircraftType?: string;
+  organizationName?: string;
+  itemCount?: number;
   items?: ChecklistItem[];
-  aircraft?: Aircraft;
-  aircraftType?: AircraftType;
 }
 
 export interface ChecklistItem {
   id: string;
   checklistId: string;
-  sequenceNumber: number;
-  text: string;
-  action: string;
-  expectedResponse?: string;
+  phase: ChecklistPhase;
+  itemText: string;
+  expectedValue?: string | null;
+  sortOrder: number;
   isCritical: boolean;
-  notes?: string;
-  voiceEnabled: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  requiresConfirmation: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ChecklistPhase =
+  | "pre_flight"
+  | "startup"
+  | "taxi"
+  | "before_takeoff"
+  | "takeoff"
+  | "climb"
+  | "cruise"
+  | "descent"
+  | "approach"
+  | "landing"
+  | "after_landing"
+  | "shutdown"
+  | "post_flight"
+  | "emergency";
+
+export interface CreateChecklistData {
+  organizationId?: string;
+  aircraftId?: string;
+  name: string;
+  description?: string;
+  items?: {
+    phase: ChecklistPhase;
+    itemText: string;
+    expectedValue?: string;
+    sortOrder?: number;
+    isCritical?: boolean;
+    requiresConfirmation?: boolean;
+  }[];
+}
+
+export interface UpdateChecklistData {
+  name?: string;
+  description?: string;
+  aircraftId?: string;
+  isActive?: boolean;
+  items?: {
+    phase: ChecklistPhase;
+    itemText: string;
+    expectedValue?: string;
+    sortOrder?: number;
+    isCritical?: boolean;
+    requiresConfirmation?: boolean;
+  }[];
 }
 
 // ----------------------------------------------------------------------------

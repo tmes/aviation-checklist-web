@@ -27,6 +27,7 @@ $dotenv->load();
 // Import controllers and middleware
 use App\Controllers\AuthController;
 use App\Controllers\AircraftController;
+use App\Controllers\ChecklistController;
 use App\Controllers\TranslationController;
 use App\Helpers\JsonHelper;
 use App\Middleware\AuthMiddleware;
@@ -137,6 +138,45 @@ try {
         $aircraftId = $matches[1];
         $controller = new AircraftController();
         $controller->delete($userId, $aircraftId);
+        exit();
+    }
+
+    // Checklist routes (protected)
+    if ($uri === "/api/checklists" && $method === "GET") {
+        $userId = AuthMiddleware::authenticate();
+        $controller = new ChecklistController();
+        $controller->list($userId);
+        exit();
+    }
+
+    if ($uri === "/api/checklists" && $method === "POST") {
+        $userId = AuthMiddleware::authenticate();
+        $controller = new ChecklistController();
+        $controller->create($userId);
+        exit();
+    }
+
+    if (preg_match('#^/api/checklists/([a-f0-9-]{36})$#', $uri, $matches) && $method === "GET") {
+        $userId = AuthMiddleware::authenticate();
+        $checklistId = $matches[1];
+        $controller = new ChecklistController();
+        $controller->get($userId, $checklistId);
+        exit();
+    }
+
+    if (preg_match('#^/api/checklists/([a-f0-9-]{36})$#', $uri, $matches) && $method === "PUT") {
+        $userId = AuthMiddleware::authenticate();
+        $checklistId = $matches[1];
+        $controller = new ChecklistController();
+        $controller->update($userId, $checklistId);
+        exit();
+    }
+
+    if (preg_match('#^/api/checklists/([a-f0-9-]{36})$#', $uri, $matches) && $method === "DELETE") {
+        $userId = AuthMiddleware::authenticate();
+        $checklistId = $matches[1];
+        $controller = new ChecklistController();
+        $controller->delete($userId, $checklistId);
         exit();
     }
 

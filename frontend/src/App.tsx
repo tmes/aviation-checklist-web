@@ -11,6 +11,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import Dashboard from './pages/Dashboard';
 import Aircraft from './pages/Aircraft';
 import AircraftForm from './pages/AircraftForm';
+import Checklists from './pages/Checklists';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -56,6 +57,16 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <AircraftForm />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Checklist routes */}
+      <Route
+        path="/checklists"
+        element={
+          <ProtectedRoute>
+            <Checklists />
           </ProtectedRoute>
         }
       />
