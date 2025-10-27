@@ -1,55 +1,67 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../stores/authStore';
-import { getChecklists, deleteChecklist } from '../lib/api/checklist';
-import Navigation from '../components/Navigation';
-import type { Checklist } from '../types';
-import { ClipboardList, Plus } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
+import { getAircraft, deleteAircraft } from '../../lib/api/aircraft';
+import Navigation from '../../components/Navigation';
+import type { Aircraft } from '../../types';
 
-export default function ChecklistsPage() {
+export default function AircraftPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { token } = useAuthStore();
 
-  const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadChecklists();
+    loadAircraft();
   }, []);
 
-  const loadChecklists = async () => {
+  const loadAircraft = async () => {
     if (!token) return;
 
     try {
       setLoading(true);
-      const data = await getChecklists(token);
-      setChecklists(data);
+      const data = await getAircraft(token);
+      setAircraft(data);
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to load checklists');
+      setError(err.message || 'Failed to load aircraft');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!token || !confirm('Are you sure you want to delete this checklist?')) return;
+    if (!token || !confirm(t('aircraft.confirmDelete'))) return;
 
     try {
-      await deleteChecklist(token, id);
-      await loadChecklists();
+      await deleteAircraft(id, token);
+      await loadAircraft();
+      setDeleteId(null);
     } catch (err: any) {
-      alert(err.message || 'Failed to delete checklist');
+      alert(err.message || 'Failed to delete aircraft');
     }
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      single_engine: t('aircraft.category.singleEngine'),
+      multi_engine: t('aircraft.category.multiEngine'),
+      helicopter: t('aircraft.category.helicopter'),
+      glider: t('aircraft.category.glider'),
+      ultralight: t('aircraft.category.ultralight'),
+    };
+    return labels[category] || category;
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="text-xl text-gray-900 dark:text-gray-100">Loading...</div>
+        <div className="text-xl text-gray-900 dark:text-gray-100">{t('common.loading')}</div>
       </div>
     );
   }
@@ -62,18 +74,17 @@ export default function ChecklistsPage() {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Checklists
+              {t('aircraft.title')}
             </h1>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Manage your aviation checklists
+              {t('aircraft.description')}
             </p>
           </div>
           <button
-            onClick={() => navigate('/checklists/create')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition"
+            onClick={() => navigate('/ground/aircraft/create')}
+            className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition"
           >
-            <Plus className="h-5 w-5" />
-            Create Checklist
+            {t('aircraft.create')}
           </button>
         </div>
 
@@ -84,22 +95,33 @@ export default function ChecklistsPage() {
           </div>
         )}
 
-        {/* Checklists List */}
-        {checklists.length === 0 ? (
+        {/* Aircraft List */}
+        {aircraft.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-            <ClipboardList className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" />
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+              />
+            </svg>
             <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-gray-100">
-              No checklists yet
+              {t('aircraft.noAircraftYet')}
             </h3>
             <p className="mt-1 text-gray-500 dark:text-gray-400">
-              Get started by creating your first checklist
+              {t('aircraft.getStarted')}
             </p>
             <button
-              onClick={() => navigate('/checklists/create')}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600"
+              onClick={() => navigate('/ground/aircraft/create')}
+              className="mt-4 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600"
             >
-              <Plus className="h-4 w-4" />
-              Create Checklist
+              {t('aircraft.create')}
             </button>
           </div>
         ) : (
@@ -108,97 +130,78 @@ export default function ChecklistsPage() {
               <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Name
+                    {t('aircraft.registration')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Aircraft
+                    {t('aircraft.type')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Organization
+                    {t('aircraft.category')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Items
+                    {t('aircraft.organization')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
+                    {t('aircraft.status')}
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
+                    {t('aircraft.actions')}
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {checklists.map((checklist) => (
-                  <tr key={checklist.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {checklist.name}
+                {aircraft.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {item.registration}
+                        </div>
                       </div>
-                      {checklist.description && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
-                          {checklist.description}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-gray-100">{item.type}</div>
+                      {item.manufacturer && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {item.manufacturer} {item.model}
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {checklist.aircraftRegistration ? (
-                        <>
-                          <div className="text-sm text-gray-900 dark:text-gray-100">
-                            {checklist.aircraftRegistration}
-                          </div>
-                          {checklist.aircraftType && (
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {checklist.aircraftType}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-sm text-gray-400 dark:text-gray-500">
-                          Not assigned
-                        </span>
-                      )}
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                        {getCategoryLabel(item.category)}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {checklist.organizationName || (
-                        <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-                          Personal
-                        </span>
+                      {item.organizationName || (
+                        <span className="text-indigo-600 dark:text-indigo-400 font-medium">{t('aircraft.personal')}</span>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900 dark:text-gray-100">
-                        {checklist.itemCount || 0} items
-                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          checklist.isActive
+                          item.isActive && item.isAvailable
                             ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                             : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
                         }`}
                       >
-                        {checklist.isActive ? 'Active' : 'Inactive'}
+                        {item.isActive && item.isAvailable
+                          ? t('aircraft.available')
+                          : t('aircraft.unavailable')}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => navigate(`/checklists/${checklist.id}`)}
+                        onClick={() => navigate(`/ground/aircraft/${item.id}/edit`)}
                         className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-4"
                       >
-                        View
+                        {t('common.edit')}
                       </button>
                       <button
-                        onClick={() => navigate(`/checklists/${checklist.id}/edit`)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(checklist.id)}
+                        onClick={() => handleDelete(item.id)}
                         className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </td>
                   </tr>

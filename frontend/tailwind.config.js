@@ -18,6 +18,10 @@ export default {
           900: "#1e3a8a",
         },
       },
+      spacing: {
+        'safe': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+      },
     },
   },
   plugins: [],

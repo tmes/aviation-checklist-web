@@ -2,9 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  padding: 0;
+  min-height: 100%;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+  touch-action: pan-y;
   font-family:
     system-ui,
     -apple-system,
@@ -15,4 +28,8 @@ body {
     Ubuntu,
     Cantarell,
     sans-serif;
+}
+
+#root {
+  min-height: 100vh;
 }

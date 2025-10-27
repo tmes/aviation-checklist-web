@@ -75,7 +75,7 @@ export default function ChecklistExecution() {
   }, [currentItemIndex]);
 
   const loadExecution = async (executionId: string) => {
-    if (!token) return;
+    if (!token) return null;
 
     try {
       setLoading(true);
@@ -91,8 +91,10 @@ export default function ChecklistExecution() {
       }
 
       setError(null);
+      return data; // Return the fresh data
     } catch (err: any) {
       setError(err.message || 'Failed to load execution');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -110,14 +112,14 @@ export default function ChecklistExecution() {
         action,
         notes: itemNotes || undefined
       });
-      await loadExecution(id);
+      const freshData = await loadExecution(id);
 
       // Clear notes after successful action
       setItemNotes('');
 
-      // Move to next item if not at the end
-      if (currentItemIndex < execution.items.length - 1) {
-        goToNext();
+      // Move to next item if not at the end, using fresh data
+      if (freshData && currentItemIndex < freshData.items.length - 1) {
+        goToNext(freshData);
       }
     } catch (err: any) {
       alert(err.message || 'Failed to update item');
@@ -135,13 +137,13 @@ export default function ChecklistExecution() {
         action: 'failed',
         notes: itemNotes || undefined,
       });
-      await loadExecution(id);
+      const freshData = await loadExecution(id);
       setShowFailedModal(false);
       setItemNotes('');
 
-      // Move to next item if not at the end
-      if (currentItemIndex < execution.items.length - 1) {
-        goToNext();
+      // Move to next item if not at the end, using fresh data
+      if (freshData && currentItemIndex < freshData.items.length - 1) {
+        goToNext(freshData);
       }
     } catch (err: any) {
       alert(err.message || 'Failed to update item');
@@ -153,7 +155,7 @@ export default function ChecklistExecution() {
 
     try {
       await completeExecution(token, id);
-      navigate('/checklists');
+      navigate('/pilot');
     } catch (err: any) {
       alert(err.message || 'Failed to complete execution');
     }
@@ -164,7 +166,7 @@ export default function ChecklistExecution() {
 
     try {
       await abortExecution(token, id);
-      navigate('/checklists');
+      navigate('/pilot');
     } catch (err: any) {
       alert(err.message || 'Failed to abort execution');
     }
@@ -183,18 +185,19 @@ export default function ChecklistExecution() {
     }
   };
 
-  const checkPhaseTransition = (nextIndex: number) => {
-    if (!execution?.items) return true;
+  const checkPhaseTransition = (nextIndex: number, freshData?: ExecutionType) => {
+    const dataToUse = freshData || execution;
+    if (!dataToUse?.items) return true;
 
-    const currentItem = execution.items[currentItemIndex];
-    const nextItem = execution.items[nextIndex];
+    const currentItem = dataToUse.items[currentItemIndex];
+    const nextItem = dataToUse.items[nextIndex];
 
     if (!currentItem || !nextItem) return true;
 
     // Check if we're moving to a different phase
     if (currentItem.phase !== nextItem.phase) {
       // Find all items in current phase
-      const currentPhaseItems = execution.items.filter(item => item.phase === currentItem.phase);
+      const currentPhaseItems = dataToUse.items.filter(item => item.phase === currentItem.phase);
       const incompleteItems = currentPhaseItems.filter(item => !item.executionStatus);
 
       if (incompleteItems.length > 0) {
@@ -224,10 +227,11 @@ export default function ChecklistExecution() {
     setShowPhaseWarning(false);
   };
 
-  const goToNext = () => {
+  const goToNext = (freshData?: ExecutionType) => {
+    const dataToUse = freshData || execution;
     const nextIndex = currentItemIndex + 1;
-    if (nextIndex < (execution?.items?.length || 0)) {
-      if (checkPhaseTransition(nextIndex)) {
+    if (nextIndex < (dataToUse?.items?.length || 0)) {
+      if (checkPhaseTransition(nextIndex, freshData)) {
         setCurrentItemIndex(nextIndex);
       }
     }
@@ -284,7 +288,7 @@ export default function ChecklistExecution() {
         <div className="hidden lg:block lg:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
             <button
-              onClick={() => navigate(`/checklists/${execution.checklist_id}`)}
+              onClick={() => navigate('/pilot')}
               className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-3"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -359,10 +363,13 @@ export default function ChecklistExecution() {
           {currentItem ? (
             <>
               {/* Header with progress - Mobile */}
-              <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+              <div
+                className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4"
+                style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+              >
                 <div className="flex items-center justify-between mb-3">
                   <button
-                    onClick={() => navigate(`/checklists/${execution.checklist_id}`)}
+                    onClick={() => navigate('/pilot')}
                     className="p-2 -ml-2 text-gray-600 dark:text-gray-400"
                   >
                     <ArrowLeft className="h-5 w-5" />
@@ -380,7 +387,7 @@ export default function ChecklistExecution() {
                     </button>
                   </div>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                   <div
                     className="bg-green-600 dark:bg-green-500 h-3 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${progress}%` }}
@@ -401,40 +408,36 @@ export default function ChecklistExecution() {
                     </span>
                   </div>
 
-                  {/* Item Text */}
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 leading-tight">
-                    {currentItem.itemText}
-                  </h1>
-
-                  {/* Critical and Confirmation Badges - PROMINENT */}
-                  {(currentItem.isCritical || currentItem.requiresConfirmation) && (
-                    <div className="mb-6 space-y-2">
-                      {currentItem.isCritical && (
-                        <div className="flex items-center gap-3 p-4 bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-500 dark:border-orange-600 rounded-xl">
-                          <AlertTriangle className="h-6 w-6 text-orange-600 dark:text-orange-400 flex-shrink-0" />
-                          <span className="text-base font-bold text-orange-900 dark:text-orange-300">
-                            CRITICAL ITEM - Extra attention required
-                          </span>
-                        </div>
-                      )}
+                  {/* Item Text with inline badges */}
+                  <div className="mb-4">
+                    <div className="flex items-start gap-2 flex-wrap mb-2">
+                      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-tight flex-1">
+                        {currentItem.itemText}
+                      </h1>
+                      {/* Confirmation badge inline with title */}
                       {currentItem.requiresConfirmation && (
-                        <div className="flex items-center gap-3 p-4 bg-purple-100 dark:bg-purple-900/30 border-2 border-purple-500 dark:border-purple-600 rounded-xl">
-                          <CheckCircle2 className="h-6 w-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                          <span className="text-base font-bold text-purple-900 dark:text-purple-300">
-                            CONFIRMATION REQUIRED
-                          </span>
-                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 border border-purple-400 dark:border-purple-700 rounded text-xs font-semibold text-purple-900 dark:text-purple-300 whitespace-nowrap">
+                          <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                          Confirm
+                        </span>
                       )}
                     </div>
-                  )}
 
-                  {/* Expected Value - PROMINENT */}
+                    {/* Critical badge on its own line if needed */}
+                    {currentItem.isCritical && (
+                      <div className="flex items-center gap-2 p-3 bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-500 dark:border-orange-600 rounded-lg">
+                        <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                        <span className="text-sm font-bold text-orange-900 dark:text-orange-300">
+                          CRITICAL ITEM - Extra attention required
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Expected Value - Compact */}
                   {currentItem.expectedValue && (
-                    <div className="mb-6 p-5 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl">
-                      <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-2">
-                        Expected Response:
-                      </p>
-                      <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">
+                    <div className="mb-4 p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <p className="text-base font-semibold text-blue-900 dark:text-blue-200">
                         {currentItem.expectedValue}
                       </p>
                     </div>
@@ -442,39 +445,36 @@ export default function ChecklistExecution() {
 
                   {/* Permanent Notes - Part of checklist item definition */}
                   {currentItem.notes && (
-                    <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-600 rounded-lg">
-                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">
-                        Note:
-                      </p>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        {currentItem.notes}
+                    <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700 rounded-lg">
+                      <p className="text-base font-medium text-yellow-900 dark:text-yellow-200">
+                        <span className="text-xs font-semibold uppercase tracking-wide">Note:</span> {currentItem.notes}
                       </p>
                     </div>
                   )}
 
-                  {/* Action Buttons */}
+                  {/* Action Buttons - Compact */}
                   {!currentItem.executionStatus ? (
-                    <div className="space-y-3 mb-6">
+                    <div className="space-y-2.5 mb-4">
                       <button
                         onClick={() => handleItemAction('completed')}
-                        className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-transparent border-[3px] border-green-600 dark:border-green-500 text-green-600 dark:text-green-400 rounded-xl hover:bg-green-600 dark:hover:bg-green-500 hover:text-white dark:hover:text-gray-900 font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-transparent border-[3px] border-green-600 dark:border-green-500 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-600 dark:hover:bg-green-500 hover:text-white dark:hover:text-gray-900 font-bold text-base shadow-md transition-all active:scale-[0.98]"
                       >
-                        <Check className="h-7 w-7" />
+                        <Check className="h-5 w-5" />
                         <span>Complete</span>
                       </button>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2.5">
                         <button
                           onClick={() => handleItemAction('skipped')}
-                          className="flex items-center justify-center gap-2 px-4 py-4 bg-transparent border-2 border-yellow-600 dark:border-yellow-500 text-yellow-600 dark:text-yellow-400 rounded-xl hover:bg-yellow-600 dark:hover:bg-yellow-500 hover:text-white dark:hover:text-gray-900 font-semibold shadow-md transition-all active:scale-[0.98]"
+                          className="flex items-center justify-center gap-2 px-3 py-3 bg-transparent border-2 border-yellow-600 dark:border-yellow-500 text-yellow-600 dark:text-yellow-400 rounded-lg hover:bg-yellow-600 dark:hover:bg-yellow-500 hover:text-white dark:hover:text-gray-900 font-semibold text-sm shadow-sm transition-all active:scale-[0.98]"
                         >
-                          <SkipForward className="h-5 w-5" />
+                          <SkipForward className="h-4 w-4" />
                           <span>Skip</span>
                         </button>
                         <button
                           onClick={() => setShowFailedModal(true)}
-                          className="flex items-center justify-center gap-2 px-4 py-4 bg-transparent border-2 border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 dark:hover:bg-red-500 hover:text-white dark:hover:text-gray-900 font-semibold shadow-md transition-all active:scale-[0.98]"
+                          className="flex items-center justify-center gap-2 px-3 py-3 bg-transparent border-2 border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-600 dark:hover:bg-red-500 hover:text-white dark:hover:text-gray-900 font-semibold text-sm shadow-sm transition-all active:scale-[0.98]"
                         >
-                          <X className="h-5 w-5" />
+                          <X className="h-4 w-4" />
                           <span>Failed</span>
                         </button>
                       </div>

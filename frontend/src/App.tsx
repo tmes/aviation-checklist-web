@@ -8,14 +8,21 @@ import './lib/i18n'; // Initialize i18n
 import Login from './pages/Login';
 import Register from './pages/Register';
 import VerifyEmail from './pages/VerifyEmail';
-import Dashboard from './pages/Dashboard';
-import Aircraft from './pages/Aircraft';
-import AircraftForm from './pages/AircraftForm';
-import Checklists from './pages/Checklists';
-import ChecklistForm from './pages/ChecklistForm';
-import ChecklistDetail from './pages/ChecklistDetail';
-import ChecklistExecution from './pages/ChecklistExecution';
 import Settings from './pages/Settings';
+import ChecklistExecution from './pages/ChecklistExecution';
+
+// Pilot mode (mobile-first)
+import PilotDashboard from './pages/pilot/Dashboard';
+import PilotChecklistDetail from './pages/pilot/ChecklistDetail';
+
+// Ground operations (desktop-first)
+import GroundDashboard from './pages/ground/Dashboard';
+import GroundAircraft from './pages/ground/Aircraft';
+import GroundAircraftForm from './pages/ground/AircraftForm';
+import GroundChecklists from './pages/ground/Checklists';
+import GroundChecklistForm from './pages/ground/ChecklistForm';
+import GroundChecklistDetail from './pages/ground/ChecklistDetail';
+
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function AppContent() {
@@ -28,77 +35,99 @@ function AppContent() {
       <Route path="/register" element={<Register />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
 
-      {/* Protected routes */}
+      {/* PILOT MODE - Mobile-first */}
       <Route
-        path="/dashboard"
+        path="/pilot"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <PilotDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pilot/checklists/:id"
+        element={
+          <ProtectedRoute>
+            <PilotChecklistDetail />
           </ProtectedRoute>
         }
       />
 
-      {/* Aircraft routes */}
+      {/* GROUND OPERATIONS - Desktop-first */}
       <Route
-        path="/aircraft"
+        path="/ground"
         element={
           <ProtectedRoute>
-            <Aircraft />
+            <GroundDashboard />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/aircraft/create"
+        path="/ground/aircraft"
         element={
           <ProtectedRoute>
-            <AircraftForm />
+            <GroundAircraft />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/aircraft/:id/edit"
+        path="/ground/aircraft/create"
         element={
           <ProtectedRoute>
-            <AircraftForm />
+            <GroundAircraftForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ground/aircraft/:id/edit"
+        element={
+          <ProtectedRoute>
+            <GroundAircraftForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ground/checklists"
+        element={
+          <ProtectedRoute>
+            <GroundChecklists />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ground/checklists/create"
+        element={
+          <ProtectedRoute>
+            <GroundChecklistForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ground/checklists/:id/edit"
+        element={
+          <ProtectedRoute>
+            <GroundChecklistForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ground/checklists/:id"
+        element={
+          <ProtectedRoute>
+            <GroundChecklistDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ground/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         }
       />
 
-      {/* Checklist routes */}
-      <Route
-        path="/checklists"
-        element={
-          <ProtectedRoute>
-            <Checklists />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/checklists/create"
-        element={
-          <ProtectedRoute>
-            <ChecklistForm />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/checklists/:id/edit"
-        element={
-          <ProtectedRoute>
-            <ChecklistForm />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/checklists/:id"
-        element={
-          <ProtectedRoute>
-            <ChecklistDetail />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Execution routes */}
+      {/* SHARED - Execution (used by both modes) */}
       <Route
         path="/executions/:id"
         element={
@@ -108,21 +137,19 @@ function AppContent() {
         }
       />
 
-      {/* Settings route */}
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        }
-      />
+      {/* Legacy redirects for backwards compatibility */}
+      <Route path="/dashboard" element={<Navigate to="/ground" replace />} />
+      <Route path="/aircraft" element={<Navigate to="/ground/aircraft" replace />} />
+      <Route path="/aircraft/*" element={<Navigate to="/ground/aircraft" replace />} />
+      <Route path="/checklists" element={<Navigate to="/ground/checklists" replace />} />
+      <Route path="/checklists/*" element={<Navigate to="/ground/checklists" replace />} />
+      <Route path="/settings" element={<Navigate to="/ground/settings" replace />} />
 
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Default redirect - will be replaced with device detection */}
+      <Route path="/" element={<Navigate to="/pilot" replace />} />
 
-      {/* 404 - redirect to dashboard */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* 404 - redirect to pilot */}
+      <Route path="*" element={<Navigate to="/pilot" replace />} />
     </Routes>
   );
 }

@@ -19,7 +19,7 @@ export default function Login() {
 
     try {
       await login({ email, password });
-      navigate('/dashboard');
+      navigate('/pilot');
     } catch (err) {
       // Error is already set in the store
     }

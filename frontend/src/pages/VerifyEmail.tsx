@@ -46,9 +46,9 @@ export default function VerifyEmail() {
         if (data.token && data.user) {
           setAuth(data.user, data.token);
 
-          // Redirect to dashboard after 2 seconds
+          // Redirect to pilot dashboard after 2 seconds
           setTimeout(() => {
-            navigate('/dashboard');
+            navigate('/pilot');
           }, 2000);
         }
       } else {

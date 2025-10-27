@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { createChecklist, updateChecklist, getChecklist } from '../lib/api/checklist';
-import { getAircraft } from '../lib/api/aircraft';
-import Navigation from '../components/Navigation';
-import type { Aircraft, ChecklistPhase } from '../types';
+import { useAuthStore } from '../../stores/authStore';
+import { createChecklist, updateChecklist, getChecklist } from '../../lib/api/checklist';
+import { getAircraft } from '../../lib/api/aircraft';
+import Navigation from '../../components/Navigation';
+import type { Aircraft, ChecklistPhase } from '../../types';
 import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 
 interface ChecklistItemFormData {
@@ -147,7 +147,7 @@ export default function ChecklistForm() {
         await createChecklist(token, data);
       }
 
-      navigate('/checklists');
+      navigate('/ground/checklists');
     } catch (err: any) {
       setError(err.message || 'Failed to save checklist');
     } finally {
@@ -162,7 +162,7 @@ export default function ChecklistForm() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/checklists')}
+            onClick={() => navigate('/ground/checklists')}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -375,7 +375,7 @@ export default function ChecklistForm() {
           <div className="flex items-center justify-end gap-4">
             <button
               type="button"
-              onClick={() => navigate('/checklists')}
+              onClick={() => navigate('/ground/checklists')}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancel

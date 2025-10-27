@@ -101,7 +101,7 @@ export default function Register() {
             firstName: formData.firstName,
             lastName: formData.lastName,
           });
-          navigate('/dashboard');
+          navigate('/pilot');
         }
       } else {
         setValidationError(data.error || 'Registration failed');

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore } from '../../stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Mail, X, Loader2 } from 'lucide-react';
-import Navigation from '../components/Navigation';
+import Navigation from '../../components/Navigation';
 
 export default function Dashboard() {
   const { user, logout } = useAuthStore();

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { getChecklist, deleteChecklist } from '../lib/api/checklist';
-import { startExecution } from '../lib/api/execution';
-import Navigation from '../components/Navigation';
-import type { Checklist, ChecklistItem, ChecklistPhase } from '../types';
+import { useAuthStore } from '../../stores/authStore';
+import { getChecklist, deleteChecklist } from '../../lib/api/checklist';
+import { startExecution } from '../../lib/api/execution';
+import Navigation from '../../components/Navigation';
+import type { Checklist, ChecklistItem, ChecklistPhase } from '../../types';
 import { ArrowLeft, Edit, Trash2, Play, AlertCircle, CheckCircle } from 'lucide-react';
 
 const PHASE_LABELS: Record<ChecklistPhase, string> = {
@@ -60,7 +60,7 @@ export default function ChecklistDetail() {
 
     try {
       await deleteChecklist(token, id);
-      navigate('/checklists');
+      navigate('/ground/checklists');
     } catch (err: any) {
       alert(err.message || 'Failed to delete checklist');
     }
@@ -125,7 +125,7 @@ export default function ChecklistDetail() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/checklists')}
+            onClick={() => navigate('/ground/checklists')}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -186,7 +186,7 @@ export default function ChecklistDetail() {
             {/* Actions */}
             <div className="flex items-center gap-2 ml-4">
               <button
-                onClick={() => navigate(`/checklists/${id}/edit`)}
+                onClick={() => navigate(`/ground/checklists/${id}/edit`)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600"
               >
                 <Edit className="h-4 w-4" />

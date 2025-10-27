@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore } from '../../stores/authStore';
 import {
   getAircraftById,
   createAircraft,
   updateAircraft,
-} from '../lib/api/aircraft';
-import Navigation from '../components/Navigation';
-import type { Aircraft, AircraftCategory, CreateAircraftData } from '../types';
+} from '../../lib/api/aircraft';
+import Navigation from '../../components/Navigation';
+import type { Aircraft, AircraftCategory, CreateAircraftData } from '../../types';
 
 export default function AircraftForm() {
   const { t } = useTranslation();
@@ -83,7 +83,7 @@ export default function AircraftForm() {
       } else {
         await createAircraft(formData, token);
       }
-      navigate('/aircraft');
+      navigate('/ground/aircraft');
     } catch (err: any) {
       setError(err.message || `Failed to ${isEdit ? 'update' : 'create'} aircraft`);
     } finally {
@@ -126,7 +126,7 @@ export default function AircraftForm() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/aircraft')}
+            onClick={() => navigate('/ground/aircraft')}
             className="text-blue-600 hover:text-blue-800 mb-4"
           >
             ← {t('aircraft.backToAircraft')}
@@ -371,7 +371,7 @@ export default function AircraftForm() {
           <div className="mt-6 flex justify-end gap-3">
             <button
               type="button"
-              onClick={() => navigate('/aircraft')}
+              onClick={() => navigate('/ground/aircraft')}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
               {t('common.cancel')}
